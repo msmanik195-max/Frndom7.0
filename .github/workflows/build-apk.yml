@@ -1,4 +1,4 @@
-name: Build Release APK
+name: Build APK
 
 on:
   push:
@@ -20,17 +20,54 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # Gradlew ফাইল না থাকলে অটো জেনারেট করবে
       - name: Setup Gradle Wrapper
         run: |
           gradle wrapper
           chmod +x gradlew
 
-      - name: Build APK
-        run: ./gradlew assembleRelease --stacktrace
+      # google-services.json ফাইল তৈরি করা
+      - name: Create google-services.json
+        run: |
+          mkdir -p app
+          cat << 'EOF' > app/google-services.json
+          {
+            "project_info": {
+              "project_number": "811952393925",
+              "firebase_url": "https://frndom-871ec-default-rtdb.firebaseio.com",
+              "project_id": "frndom-871ec",
+              "storage_bucket": "frndom-871ec.firebasestorage.app"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:811952393925:android:4755f7334040c07c702aac",
+                  "android_client_info": {
+                    "package_name": "com.frndom"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyDIyVBiQKM9sFaOie1Mabvx6uWIq_5G2g4"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+
+      # KSP এরর এড়াতে ডিবাগ এপিকে বিল্ড
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug -Dorg.gradle.project.ksp.incremental=false --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: App-Release-APK
-          path: app/build/outputs/apk/release/*.apk
+          name: App-Debug-APK
+          path: app/build/outputs/apk/debug/*.apk
