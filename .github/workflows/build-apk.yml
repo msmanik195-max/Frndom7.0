@@ -62,9 +62,15 @@ jobs:
           }
           EOF
 
-      # KSP এরর এড়াতে ডিবাগ এপিকে বিল্ড
+      # KSP এরর ফিক্স করার ফ্ল্যাগ
+      - name: Fix KSP NullPointer in Headless Environment
+        run: |
+          echo "ksp.useKSP2=false" >> gradle.properties
+          echo "ksp.incremental=false" >> gradle.properties
+
+      # এপিকে বিল্ড করা
       - name: Build Debug APK
-        run: ./gradlew assembleDebug -Dorg.gradle.project.ksp.incremental=false --stacktrace
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
