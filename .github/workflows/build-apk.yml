@@ -20,7 +20,13 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # মিসিং ডিবাগ কিস্টোর তৈরি
+      # ক্যাশ ক্লিয়ার সহ নির্দিষ্ট Gradle 8.2 জেনারেট করা
+      - name: Setup Gradle Wrapper 8.2
+        run: |
+          gradle wrapper --gradle-version 8.2 --distribution-type bin
+          chmod +x gradlew
+
+      # ডিবাগ কিস্টোর তৈরি
       - name: Generate Debug Keystore
         run: |
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
@@ -62,17 +68,10 @@ jobs:
           }
           EOF
 
-      # মিসিং gradlew ফাইল তৈরি করা
-      - name: Generate gradlew wrapper
-        run: |
-          gradle wrapper
-          chmod +x gradlew
-
-      # প্রজেক্ট বিল্ড করা
+      # Kotlin execution strategy নির্ধারণ করে কম্পাইল করা
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --no-configuration-cache
+        run: ./gradlew assembleDebug -Dorg.gradle.project.kotlin.compiler.execution.strategy="in-process" --no-daemon
 
-      # তৈরি হওয়া এপিকে আপলোড
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
