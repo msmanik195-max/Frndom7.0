@@ -14,16 +14,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Foojay প্লাগইনের জন্য বাধ্যতামূলক Java 17 সেটআপ
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
-
-      # ক্যাশ ক্লিয়ার ও সঠিক র‍্যাপার সেটআপ
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
 
       # মিসিং ডিবাগ কিস্টোর তৈরি
       - name: Generate Debug Keystore
@@ -67,11 +62,13 @@ jobs:
           }
           EOF
 
-      # Gradlew পারমিশন দেওয়া
-      - name: Make Gradlew Executable
-        run: chmod +x gradlew
+      # মিসিং gradlew ফাইল তৈরি করা
+      - name: Generate gradlew wrapper
+        run: |
+          gradle wrapper
+          chmod +x gradlew
 
-      # প্রজেক্টের নিজস্ব Gradlew দিয়ে বিল্ড (যাতে প্লাগইন কনফ্লিক্ট না করে)
+      # প্রজেক্ট বিল্ড করা
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --no-configuration-cache
 
