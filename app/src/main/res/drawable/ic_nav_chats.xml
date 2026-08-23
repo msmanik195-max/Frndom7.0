@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+  <!-- Messenger Speech Bubble Outline -->
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M256,32 C125.8,32 20,131.7 20,254.4 C20,317.8 46.8,375.1 90.1,415.8 C94.2,419.7 96.6,425.2 96.6,430.9 L96.6,464.3 C96.6,478.4 109.8,488.9 123.6,485.6 L184.2,471.1 C188.7,470 193.4,470.6 197.6,472.7 C216,481.8 235.6,486.8 256,486.8 C386.2,486.8 492,387.1 492,264.4 C492,131.7 386.2,32 256,32 Z M256,438.8 C238.4,438.8 221.4,434.6 205.5,426.7 C192.5,420.2 177.7,418.5 163.5,421.9 L144.6,426.4 L144.6,406 C144.6,388.7 137.2,372.4 124.6,360.5 C89.2,327.2 68,280.9 68,254.4 C68,158.3 152.3,80 256,80 C359.7,80 444,158.3 444,254.4 C444,350.5 359.7,438.8 256,438.8 Z"/>
+  <!-- 3 Dots inside speech bubble -->
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M168,256m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0"/>
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M256,256m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0"/>
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M344,256m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0"/>
+</vector>

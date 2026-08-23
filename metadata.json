@@ -1,0 +1,6 @@
+{
+  "name": "Frndom",
+  "description": "A modern social media application authentication system with Facebook-style splash screen, registration, login, and secure Firebase user profile management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

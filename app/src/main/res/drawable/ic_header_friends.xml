@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+  <!-- Main Left User Head -->
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M192,208 C143.5,208 104,168.5 104,120 C104,71.5 143.5,32 192,32 C240.5,32 280,71.5 280,120 C280,168.5 240.5,208 192,208 Z M192,72 C165.5,72 144,93.5 144,120 C144,146.5 165.5,168 192,168 C218.5,168 240,146.5 240,120 C240,93.5 218.5,72 192,72 Z"/>
+  <!-- Main Left User Torso -->
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M312,448 C298.7,448 288,437.3 288,424 C288,367.6 244.4,324 192,324 C139.6,324 96,367.6 96,424 C96,437.3 85.3,448 72,448 C58.7,448 48,437.3 48,424 C48,341.2 112.8,276 192,276 C271.2,276 336,341.2 336,424 C336,437.3 325.3,448 312,448 Z"/>
+  <!-- Secondary Right User Head -->
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M392,192 C352.2,192 320,159.8 320,120 C320,80.2 352.2,48 392,48 C431.8,48 464,80.2 464,120 C464,159.8 431.8,192 392,192 Z M392,88 C374.3,88 360,102.3 360,120 C360,137.7 374.3,152 392,152 C409.7,152 424,137.7 424,120 C424,102.3 409.7,88 392,88 Z"/>
+  <!-- Secondary Right User Torso Outline -->
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M480,416 C466.7,416 456,405.3 456,392 C456,347.9 420.1,312 376,312 C362.7,312 352,301.3 352,288 C352,274.7 362.7,264 376,264 C446.7,264 504,321.3 504,392 C504,405.3 493.3,416 480,416 Z"/>
+</vector>

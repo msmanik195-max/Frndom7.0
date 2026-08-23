@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+  <!-- 3 Horizontal Rounded Bars -->
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M480,96 L32,96 C14.3,96 0,110.3 0,128 C0,145.7 14.3,160 32,160 L480,160 C497.7,160 512,145.7 512,128 C512,110.3 497.7,96 480,96 Z"/>
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M480,224 L32,224 C14.3,224 0,238.3 0,256 C0,273.7 14.3,288 32,288 L480,288 C497.7,288 512,273.7 512,256 C512,238.3 497.7,224 480,224 Z"/>
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M480,352 L32,352 C14.3,352 0,366.3 0,384 C0,401.7 14.3,416 32,416 L480,416 C497.7,416 512,401.7 512,384 C512,366.3 497.7,352 480,352 Z"/>
+</vector>

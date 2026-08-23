@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+  <!-- Rounded Film Reel Container with top segments and center play triangle -->
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M384,32 L128,32 C57.3,32 0,89.3 0,160 L0,384 C0,454.7 57.3,512 128,512 L384,512 C454.7,512 512,454.7 512,384 L512,160 C512,89.3 454.7,32 384,32 Z M464,160 L464,168 L360,168 L360,80 L384,80 C428.1,80 464,115.9 464,160 Z M312,80 L312,168 L200,168 L200,80 L312,80 Z M128,80 L152,80 L152,168 L48,168 L48,160 C48,115.9 83.9,80 128,80 Z M384,464 L128,464 C83.9,464 48,428.1 48,384 L48,216 L464,216 L464,384 C464,428.1 428.1,464 384,464 Z"/>
+  <!-- Center Play Button -->
+  <path
+      android:fillColor="@android:color/black"
+      android:pathData="M212,276 C205.4,272.2 197.2,276.9 197.2,284.5 L197.2,395.5 C197.2,403.1 205.4,407.8 212,404 L318,348.5 C324.7,344.7 324.7,335.3 318,331.5 L212,276 Z"/>
+</vector>
