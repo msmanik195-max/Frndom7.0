@@ -51,6 +51,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -83,6 +85,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -139,13 +142,20 @@ fun ChatDetailScreen(
     var viewingFullImageUrl by remember { mutableStateOf<String?>(null) }
     var viewingFullVideoUrl by remember { mutableStateOf<String?>(null) }
 
+    // Facebook-style Microphone Permission Dialog State
+    var showMicPermissionModal by remember { mutableStateOf(false) }
+    var micPermissionDeniedPermanently by remember { mutableStateOf(false) }
+
     val audioPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            Toast.makeText(context, "Microphone permission granted.", Toast.LENGTH_SHORT).show()
+            showMicPermissionModal = false
+            micPermissionDeniedPermanently = false
+            Toast.makeText(context, "Microphone access enabled! Press and hold the mic to record.", Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(context, "Microphone permission is required to record voice or make calls.", Toast.LENGTH_SHORT).show()
+            micPermissionDeniedPermanently = true
+            showMicPermissionModal = true
         }
     }
 
@@ -385,6 +395,7 @@ fun ChatDetailScreen(
                 IconButton(
                     onClick = {
                         if (!hasAudioPermission()) {
+                            showMicPermissionModal = true
                             audioPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
                             return@IconButton
                         }
@@ -630,6 +641,7 @@ fun ChatDetailScreen(
                             detectTapGestures(
                                 onPress = {
                                     if (!hasAudioPermission()) {
+                                        showMicPermissionModal = true
                                         audioPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
                                         return@detectTapGestures
                                     }
@@ -891,6 +903,106 @@ fun ChatDetailScreen(
             videoUrl = viewingFullVideoUrl!!,
             title = "Video from $peerDisplayName",
             onDismiss = { viewingFullVideoUrl = null }
+        )
+    }
+
+    // Facebook / Messenger Style Interactive Microphone Permission Dialog Modal
+    if (showMicPermissionModal) {
+        AlertDialog(
+            onDismissRequest = { showMicPermissionModal = false },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Color.White,
+            icon = {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFE7F3FF)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Mic,
+                        contentDescription = "Microphone",
+                        tint = Color(0xFF1877F2),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = "Allow Frndom to record audio?",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 19.sp,
+                    textAlign = TextAlign.Center,
+                    color = Color(0xFF050505)
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "To send voice notes and make crystal-clear audio calls with your friends, allow Frndom to use your microphone.",
+                        fontSize = 14.sp,
+                        color = Color(0xFF65676B),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp
+                    )
+                    if (micPermissionDeniedPermanently) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFFFF4E5),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Permission was blocked in device settings. Tap 'Open Settings' below, then tap 'Permissions' > 'Microphone' > 'Allow'.",
+                                fontSize = 12.sp,
+                                color = Color(0xFFB76E00),
+                                modifier = Modifier.padding(10.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (micPermissionDeniedPermanently) {
+                            AppPermissionHelper.openAppSettings(context)
+                        } else {
+                            audioPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                ) {
+                    Text(
+                        text = if (micPermissionDeniedPermanently) "Open Settings to Allow" else "Allow Microphone Access",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showMicPermissionModal = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Not Now",
+                        color = Color(0xFF65676B),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp
+                    )
+                }
+            }
         )
     }
 }
