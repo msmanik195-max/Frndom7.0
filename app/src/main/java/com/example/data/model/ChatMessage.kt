@@ -9,8 +9,10 @@ data class ChatMessage(
     val senderName: String = "",
     val receiverId: String = "",
     val text: String = "",
-    val mediaType: String = "text", // "text", "image", "video", "audio", "call"
+    val mediaType: String = "text", // "text", "image", "video", "audio", "call", "file", "apk"
     val mediaUrl: String = "",
+    val fileName: String = "",
+    val fileSize: Long = 0L,
     val timestamp: Long = System.currentTimeMillis(),
     val deletedForUserIds: List<String> = emptyList(),
     val isDeletedForEveryone: Boolean = false
@@ -24,6 +26,8 @@ data class ChatMessage(
             "text" to text,
             "mediaType" to mediaType,
             "mediaUrl" to mediaUrl,
+            "fileName" to fileName,
+            "fileSize" to fileSize,
             "timestamp" to timestamp,
             "deletedForUserIds" to deletedForUserIds,
             "isDeletedForEveryone" to isDeletedForEveryone
@@ -42,6 +46,8 @@ data class ChatMessage(
                 text = map["text"] as? String ?: "",
                 mediaType = map["mediaType"] as? String ?: "text",
                 mediaUrl = map["mediaUrl"] as? String ?: "",
+                fileName = map["fileName"] as? String ?: "",
+                fileSize = (map["fileSize"] as? Number)?.toLong() ?: 0L,
                 timestamp = (map["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis(),
                 deletedForUserIds = deletedList,
                 isDeletedForEveryone = map["isDeletedForEveryone"] as? Boolean ?: false

@@ -36,15 +36,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -88,7 +92,10 @@ import com.example.data.model.UserProfile
 import com.example.data.repository.ChatRepository
 import com.example.data.service.MediaUploadService
 import com.example.ui.components.FrndomVideoPlayer
+import com.example.ui.components.FullScreenImageViewer
+import com.example.ui.components.FullScreenVideoViewer
 import com.example.ui.components.VerificationBadge
+import com.example.util.AppPermissionHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -128,21 +135,37 @@ fun ChatDetailScreen(
     var isRecordingAudio by remember { mutableStateOf(false) }
     var recordingDurationSeconds by remember { mutableIntStateOf(0) }
 
+    // Media Viewer Overlays
+    var viewingFullImageUrl by remember { mutableStateOf<String?>(null) }
+    var viewingFullVideoUrl by remember { mutableStateOf<String?>(null) }
+
     val audioPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            Toast.makeText(context, "Microphone permission enabled. Press & hold the mic to send a voice note.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Microphone permission granted.", Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(context, "Microphone permission is required for voice notes & audio calls.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Microphone permission is required to record voice or make calls.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val galleryPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val isGranted = permissions.values.any { it }
+        if (isGranted) {
+            Toast.makeText(context, "Media permission granted.", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Permission is required to attach photos, videos, or files.", Toast.LENGTH_SHORT).show()
         }
     }
 
     fun hasAudioPermission(): Boolean {
-        return androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.RECORD_AUDIO
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        return AppPermissionHelper.hasMicrophonePermission(context)
+    }
+
+    fun hasGalleryPermission(): Boolean {
+        return AppPermissionHelper.hasGalleryPermission(context)
     }
 
     // Selected Message for Long-press Action Sheet (Delete for Me / Delete for Everyone / Download)
@@ -204,6 +227,39 @@ fun ChatDetailScreen(
                         mediaType = "video",
                         mediaUrl = url
                     )
+                }
+            }
+        }
+    }
+
+    // File / APK Picker
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null && mediaUploadService != null) {
+            isUploadingMedia = true
+            scope.launch {
+                val res = mediaUploadService.uploadDocumentOrApkUri(uri, folder = "chats")
+                val triple = res.getOrNull()
+                isUploadingMedia = false
+                if (triple != null) {
+                    val (url, fileName, fileSize) = triple
+                    val isApk = fileName.endsWith(".apk", ignoreCase = true)
+                    chatRepository.sendMessage(
+                        senderId = currentUserId,
+                        senderName = currentUserName,
+                        senderAvatar = currentUserAvatar,
+                        receiverId = peerProfile.uid,
+                        receiverName = peerDisplayName,
+                        receiverAvatar = peerProfile.profilePictureUrl,
+                        text = "",
+                        mediaType = if (isApk) "apk" else "file",
+                        mediaUrl = url,
+                        fileName = fileName,
+                        fileSize = fileSize
+                    )
+                } else {
+                    Toast.makeText(context, "Failed to upload file", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -428,6 +484,15 @@ fun ChatDetailScreen(
                             message = msg,
                             isMe = isMe,
                             voicePlayerManager = voicePlayerManager,
+                            onImageClick = { url ->
+                                viewingFullImageUrl = url
+                            },
+                            onVideoClick = { url ->
+                                viewingFullVideoUrl = url
+                            },
+                            onOpenFile = { url, name ->
+                                ChatMediaHelper.downloadAndOpenApkOrFile(context, url, name)
+                            },
                             onLongPress = {
                                 selectedMessageForOptions = msg
                             },
@@ -538,6 +603,20 @@ fun ChatDetailScreen(
                         contentDescription = "Send Video",
                         tint = Color(0xFF1877F2),
                         modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                // APK / Document File Picker
+                IconButton(
+                    onClick = {
+                        filePickerLauncher.launch("*/*")
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AttachFile,
+                        contentDescription = "Send APK or Document",
+                        tint = Color(0xFF1877F2),
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
@@ -796,6 +875,24 @@ fun ChatDetailScreen(
             }
         )
     }
+
+    // Full Screen Image Zoom & Download Dialog
+    if (viewingFullImageUrl != null) {
+        FullScreenImageViewer(
+            imageUrl = viewingFullImageUrl!!,
+            title = "Photo from $peerDisplayName",
+            onDismiss = { viewingFullImageUrl = null }
+        )
+    }
+
+    // Full Screen Video Player & Download Dialog
+    if (viewingFullVideoUrl != null) {
+        FullScreenVideoViewer(
+            videoUrl = viewingFullVideoUrl!!,
+            title = "Video from $peerDisplayName",
+            onDismiss = { viewingFullVideoUrl = null }
+        )
+    }
 }
 
 @Composable
@@ -803,6 +900,9 @@ private fun ChatMessageBubble(
     message: ChatMessage,
     isMe: Boolean,
     voicePlayerManager: VoicePlayerManager,
+    onImageClick: (url: String) -> Unit,
+    onVideoClick: (url: String) -> Unit,
+    onOpenFile: (url: String, fileName: String) -> Unit,
     onLongPress: () -> Unit,
     onDownloadMedia: (url: String, isVideo: Boolean) -> Unit
 ) {
@@ -858,7 +958,7 @@ private fun ChatMessageBubble(
                         )
                     }
                 }
-                // Image Message with direct download overlay
+                // Image Message with zoom tap & download button
                 else if (message.mediaType == "image" && message.mediaUrl.isNotBlank()) {
                     Box {
                         AsyncImage(
@@ -868,6 +968,7 @@ private fun ChatMessageBubble(
                             modifier = Modifier
                                 .size(width = 220.dp, height = 220.dp)
                                 .clip(RoundedCornerShape(12.dp))
+                                .clickable { onImageClick(message.mediaUrl) }
                         )
 
                         // Download Button Overlay
@@ -891,7 +992,7 @@ private fun ChatMessageBubble(
                         }
                     }
                 }
-                // Video Message with direct download overlay
+                // Video Message with full-screen player tap & download button
                 else if (message.mediaType == "video" && message.mediaUrl.isNotBlank()) {
                     Box {
                         FrndomVideoPlayer(
@@ -899,6 +1000,7 @@ private fun ChatMessageBubble(
                             modifier = Modifier
                                 .size(width = 220.dp, height = 220.dp)
                                 .clip(RoundedCornerShape(12.dp))
+                                .clickable { onVideoClick(message.mediaUrl) }
                         )
 
                         // Download Button Overlay
@@ -919,6 +1021,72 @@ private fun ChatMessageBubble(
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
+                        }
+                    }
+                }
+                // APK / Document File Message Bubble
+                else if ((message.mediaType == "apk" || message.mediaType == "file") && message.mediaUrl.isNotBlank()) {
+                    val isApk = message.mediaType == "apk" || message.fileName.endsWith(".apk", ignoreCase = true)
+                    val displayName = if (message.fileName.isNotBlank()) message.fileName else if (isApk) "Application.apk" else "Attachment"
+                    val formattedSize = if (message.fileSize > 0) ChatMediaHelper.formatFileSize(message.fileSize) else ""
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isMe) Color(0xFF0056D2) else Color(0xFFF0F2F5),
+                        modifier = Modifier
+                            .width(230.dp)
+                            .clickable { onOpenFile(message.mediaUrl, displayName) }
+                            .padding(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = if (isApk) Color(0xFF34A853) else (if (isMe) Color.White.copy(alpha = 0.2f) else Color(0xFF1877F2).copy(alpha = 0.15f)),
+                                modifier = Modifier.size(42.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = if (isApk) Icons.Default.Android else Icons.Default.FolderZip,
+                                        contentDescription = if (isApk) "APK File" else "Document",
+                                        tint = if (isApk) Color.White else (if (isMe) Color.White else Color(0xFF1877F2)),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = displayName,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                    color = if (isMe) Color.White else Color(0xFF050505)
+                                )
+                                if (formattedSize.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = formattedSize,
+                                        fontSize = 11.sp,
+                                        color = if (isMe) Color.White.copy(alpha = 0.8f) else Color(0xFF65676B)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = "Download & Open",
+                                tint = if (isMe) Color.White else Color(0xFF1877F2),
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                 }

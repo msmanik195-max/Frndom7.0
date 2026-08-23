@@ -2,6 +2,7 @@ package com.example.ui.chats
 
 import android.app.DownloadManager
 import android.content.Context
+import android.content.Intent
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
@@ -10,6 +11,7 @@ import android.os.Environment
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,11 +27,25 @@ import java.net.URL
 
 object ChatMediaHelper {
 
+    fun formatFileSize(sizeInBytes: Long): String {
+        if (sizeInBytes <= 0L) return ""
+        val kb = sizeInBytes / 1024.0
+        val mb = kb / 1024.0
+        val gb = mb / 1024.0
+        return when {
+            gb >= 1.0 -> String.format(java.util.Locale.US, "%.1f GB", gb)
+            mb >= 1.0 -> String.format(java.util.Locale.US, "%.1f MB", mb)
+            kb >= 1.0 -> String.format(java.util.Locale.US, "%.0f KB", kb)
+            else -> "$sizeInBytes B"
+        }
+    }
+
     fun downloadMediaFile(
         context: Context,
         url: String,
         suggestedName: String = "frndom_media",
-        isVideo: Boolean = false
+        isVideo: Boolean = false,
+        isApkOrDoc: Boolean = false
     ) {
         if (url.isBlank()) {
             Toast.makeText(context, "Cannot download: Invalid URL", Toast.LENGTH_SHORT).show()
@@ -37,18 +53,24 @@ object ChatMediaHelper {
         }
 
         try {
-            val extension = if (isVideo) ".mp4" else ".jpg"
-            val fileName = "${suggestedName}_${System.currentTimeMillis()}$extension"
+            val fileName = when {
+                isApkOrDoc -> suggestedName.ifBlank { "file_${System.currentTimeMillis()}.apk" }
+                isVideo -> "${suggestedName}_${System.currentTimeMillis()}.mp4"
+                else -> "${suggestedName}_${System.currentTimeMillis()}.jpg"
+            }
             val uri = Uri.parse(url)
+
+            val destDir = when {
+                isApkOrDoc -> Environment.DIRECTORY_DOWNLOADS
+                isVideo -> Environment.DIRECTORY_MOVIES
+                else -> Environment.DIRECTORY_PICTURES
+            }
 
             val request = DownloadManager.Request(uri).apply {
                 setTitle(fileName)
                 setDescription("Downloading from Frndom Chat")
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                setDestinationInExternalPublicDir(
-                    if (isVideo) Environment.DIRECTORY_MOVIES else Environment.DIRECTORY_PICTURES,
-                    fileName
-                )
+                setDestinationInExternalPublicDir(destDir, fileName)
                 setAllowedOverMetered(true)
                 setAllowedOverRoaming(true)
             }
@@ -56,18 +78,79 @@ object ChatMediaHelper {
             val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
             if (manager != null) {
                 manager.enqueue(request)
-                Toast.makeText(context, "Downloading to Gallery/Downloads...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Download started: $fileName", Toast.LENGTH_SHORT).show()
             } else {
-                // Fallback direct download in background thread
-                downloadDirectly(context, url, fileName, isVideo)
+                downloadDirectly(context, url, fileName, isVideo, isApkOrDoc)
             }
         } catch (e: Exception) {
             Log.e("ChatMediaHelper", "DownloadManager failed: ${e.message}")
-            downloadDirectly(context, url, "frndom_${System.currentTimeMillis()}", isVideo)
+            downloadDirectly(context, url, suggestedName, isVideo, isApkOrDoc)
         }
     }
 
-    private fun downloadDirectly(context: Context, fileUrl: String, fileName: String, isVideo: Boolean) {
+    fun downloadAndOpenApkOrFile(context: Context, url: String, fileName: String) {
+        if (url.isBlank()) return
+        Toast.makeText(context, "Downloading $fileName...", Toast.LENGTH_SHORT).show()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val resolvedName = fileName.ifBlank { "app_${System.currentTimeMillis()}.apk" }
+                val targetDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir
+                val file = File(targetDir, resolvedName)
+
+                val conn = URL(url).openConnection() as HttpURLConnection
+                conn.doInput = true
+                conn.connect()
+
+                val input = conn.inputStream
+                val output = FileOutputStream(file)
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                while (input.read(buffer).also { bytesRead = it } != -1) {
+                    output.write(buffer, 0, bytesRead)
+                }
+                output.flush()
+                output.close()
+                input.close()
+
+                CoroutineScope(Dispatchers.Main).launch {
+                    try {
+                        val fileUri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            file
+                        )
+
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            if (resolvedName.endsWith(".apk", ignoreCase = true)) {
+                                setDataAndType(fileUri, "application/vnd.android.package-archive")
+                            } else {
+                                setDataAndType(fileUri, "*/*")
+                            }
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Downloaded to: ${file.name}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ChatMediaHelper", "Error downloading/opening file: ${e.message}")
+                CoroutineScope(Dispatchers.Main).launch {
+                    downloadMediaFile(context, url, fileName, isApkOrDoc = true)
+                }
+            }
+        }
+    }
+
+    private fun downloadDirectly(
+        context: Context,
+        fileUrl: String,
+        fileName: String,
+        isVideo: Boolean,
+        isApkOrDoc: Boolean = false
+    ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val url = URL(fileUrl)
@@ -75,8 +158,11 @@ object ChatMediaHelper {
                 connection.doInput = true
                 connection.connect()
 
-                val dir = context.getExternalFilesDir(if (isVideo) Environment.DIRECTORY_MOVIES else Environment.DIRECTORY_PICTURES)
-                    ?: context.filesDir
+                val dir = when {
+                    isApkOrDoc -> context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir
+                    isVideo -> context.getExternalFilesDir(Environment.DIRECTORY_MOVIES) ?: context.filesDir
+                    else -> context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: context.filesDir
+                }
                 val file = File(dir, fileName)
                 val input = connection.inputStream
                 val output = FileOutputStream(file)

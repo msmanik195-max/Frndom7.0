@@ -172,7 +172,9 @@ class ChatRepository(private val context: Context) {
         receiverAvatar: String,
         text: String,
         mediaType: String = "text",
-        mediaUrl: String = ""
+        mediaUrl: String = "",
+        fileName: String = "",
+        fileSize: Long = 0L
     ) {
         if (senderId.isBlank() || receiverId.isBlank() || dbRef == null) return
 
@@ -188,6 +190,8 @@ class ChatRepository(private val context: Context) {
             text = text,
             mediaType = mediaType,
             mediaUrl = mediaUrl,
+            fileName = fileName,
+            fileSize = fileSize,
             timestamp = timestamp
         )
 
@@ -198,6 +202,8 @@ class ChatRepository(private val context: Context) {
             "image" -> "📷 Sent a photo"
             "video" -> "🎥 Sent a video"
             "audio" -> "🎤 Sent a voice message"
+            "apk" -> "📦 Sent an APK: ${fileName.ifBlank { "app.apk" }}"
+            "file" -> "📎 Sent a file: ${fileName.ifBlank { "document" }}"
             "call" -> "📞 $text"
             else -> text
         }

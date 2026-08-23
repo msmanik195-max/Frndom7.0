@@ -99,6 +99,61 @@ class MediaUploadService(
         }
     }
 
+    suspend fun uploadDocumentOrApkUri(
+        uri: Uri,
+        folder: String = "files"
+    ): Result<Triple<String, String, Long>> = withContext(Dispatchers.IO) {
+        try {
+            var fileName = "file_${System.currentTimeMillis()}"
+            var fileSize = 0L
+
+            val cursor = context.contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    val sizeIndex = it.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    if (nameIndex != -1) {
+                        fileName = it.getString(nameIndex) ?: fileName
+                    }
+                    if (sizeIndex != -1) {
+                        fileSize = it.getLong(sizeIndex)
+                    }
+                }
+            }
+
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val bytes = inputStream?.readBytes() ?: ByteArray(0)
+            inputStream?.close()
+
+            if (fileSize <= 0L) {
+                fileSize = bytes.size.toLong()
+            }
+
+            val extension = if (fileName.contains(".")) fileName.substringAfterLast(".").lowercase() else "apk"
+            val mimeType = when (extension) {
+                "apk" -> "application/vnd.android.package-archive"
+                "pdf" -> "application/pdf"
+                "zip" -> "application/zip"
+                else -> context.contentResolver.getType(uri) ?: "application/octet-stream"
+            }
+
+            val activeConfig = storageRepository.getActiveConfig()
+            val objectKey = "$folder/${UUID.randomUUID()}_$fileName"
+
+            val url = if (activeConfig != null) {
+                val uploadRes = uploadBytesToR2(bytes, objectKey, mimeType, activeConfig)
+                uploadRes.getOrDefault(uri.toString())
+            } else {
+                "https://pub-c98a2e409ad94dbb8aded428cf2952a1.r2.dev/$objectKey"
+            }
+
+            Result.success(Triple(url, fileName, fileSize))
+        } catch (e: Exception) {
+            Log.e("MediaUploadService", "Document/APK upload failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun uploadFile(
         file: File,
         folder: String = "uploads",
