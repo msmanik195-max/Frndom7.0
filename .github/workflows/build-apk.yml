@@ -3,7 +3,7 @@ name: Build Release APK
 on:
   push:
     branches:
-      - '**' # যেকোনো ব্রাঞ্চে পুশ করলেই এপিকে বিল্ড হবে
+      - '**'
   workflow_dispatch:
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
           java-version: '17'
 
       - name: Setup Gradle
-        uses: actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Grant Execute Permission
         run: chmod +x gradlew
